@@ -1,0 +1,25 @@
+[project]
+name = "structured-templates"
+version = "0.0.1"
+description = "Templating engine for structured data (no free-form text generation)."
+authors = [{name = "Niklas Rosenstein", email = "rosensteinniklas@gmail.com"}]
+dependencies = []
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "ruff>=0.4.8",
+    "mypy>=1.10.0",
+]
+
+[tool.ruff]
+line-length = 120
