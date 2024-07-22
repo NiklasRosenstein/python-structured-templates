@@ -38,7 +38,6 @@ engine = TemplateEngine()
 assert engine.evaluate({"key": "${{ 1 + 1 }}"}) == {"key": 2}
 ```
 
-
 ## Specification
 
 ### Value substitution
