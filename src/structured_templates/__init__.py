@@ -89,7 +89,9 @@ class TemplateEngine:
             else:
                 key_value = self.evaluate_string(self.Context(ctx, key, key))
                 if not isinstance(key_value, str):
-                    raise ValueError(f"Expected a string key, got {type(key_value).__name__} [@ {subctx.trace_location()}]")
+                    raise ValueError(
+                        f"Expected a string key, got {type(key_value).__name__} [@ {subctx.trace_location()}]"
+                    )
                 result[key_value] = self.evaluate(self.Context(ctx, key, value))
 
         return result
@@ -107,7 +109,7 @@ class TemplateEngine:
         """
 
         if ctx.data.startswith("${{") and ctx.data.endswith("}}"):
-            return self.evaluate_expression(self.Context(ctx, None, ctx.data[3:-1]))
+            return self.evaluate_expression(self.Context(ctx.parent, ctx.key, ctx.data[3:-2]))
 
         def _repl(m: re.Match[str]) -> str:
             result = self.evaluate_expression(self.Context(ctx.parent, ctx.key, m.group(1)))
@@ -115,7 +117,7 @@ class TemplateEngine:
                 raise ValueError(f"Expected a plain value, got {type(result).__name__} [@ {ctx.trace_location()}]")
             return str(result) if result is not None else ""
 
-        return re.sub(r"\$\{\{([^}]+)\}\}", _repl, ctx.data)
+        return re.sub(r"\$\{\{(.+?)\}\}", _repl, ctx.data)
 
     def evaluate_expression(self, ctx: Context[str]) -> bool:
         """

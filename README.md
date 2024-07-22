@@ -21,6 +21,24 @@ This example demonstrates how to use the templating engine to generate a Kuberne
 `for(...)` control elements are used to conditionally include keys and loop over a dictionary, respectively. The
 `${{ ... }}` syntax is used to evaluate expressions and substitute the result into the template.
 
+## Usage
+
+Install the package from PyPI:
+
+```bash
+pip install structured-templates
+```
+
+The `TemplateEngine` is the main class that is used to evaluate templates.
+
+```py
+from structured_templates import TemplateEngine
+
+engine = TemplateEngine()
+assert engine.evaluate({"key": "${{ 1 + 1 }}"}) == {"key": 2}
+```
+
+
 ## Specification
 
 ### Value substitution

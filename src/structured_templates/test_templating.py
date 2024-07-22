@@ -2,7 +2,7 @@ from structured_templates import TemplateEngine
 
 
 def test_dict_if_condition() -> None:
-    template_engine = TemplateEngine()
+    engine = TemplateEngine()
 
     template = {
         "if(True)": {
@@ -13,12 +13,12 @@ def test_dict_if_condition() -> None:
         },
     }
 
-    result = template_engine.evaluate(template)
+    result = engine.evaluate(template)
     assert result == {"a": 42}
 
 
 def test_dict_for_block() -> None:
-    template_engine = TemplateEngine()
+    engine = TemplateEngine()
 
     template = {
         "for(i in range(3))": {
@@ -26,9 +26,14 @@ def test_dict_for_block() -> None:
         },
     }
 
-    result = template_engine.evaluate(template)
+    result = engine.evaluate(template)
     assert result == {
         "key0": "value0",
         "key1": "value1",
         "key2": "value2",
     }
+
+
+def test_basic_expression() -> None:
+    engine = TemplateEngine()
+    assert engine.evaluate({"key": "${{ 1 + 1 }}"}) == {"key": 2}
