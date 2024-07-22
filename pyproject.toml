@@ -19,6 +19,7 @@ distribution = true
 dev = [
     "ruff>=0.4.8",
     "mypy>=1.10.0",
+    "pytest>=8.3.1",
 ]
 
 [tool.ruff]
