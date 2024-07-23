@@ -1,10 +1,11 @@
+from collections import ChainMap
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 import re
 from typing import Any, Generic, TypeVar, cast
 
 
-Value = dict[str, "Value"] | list["Value"] | str | int | float | bool | None
+Value = dict[str, Any] | list[Any] | str | int | float | bool | None
 T_Value = TypeVar("T_Value", bound=Value)
 
 
@@ -35,7 +36,28 @@ class TemplateEngine:
             if self.parent is None:
                 return "$"
             else:
-                return f"{self.parent.trace_location()}.{self.key}"
+                assert self.key is not None
+                if self.key.isdigit() or self.key.isidentifier():
+                    return f"{self.parent.trace_location()}.{self.key}"
+                else:
+                    return f"{self.parent.trace_location()}.'{self.key}'"
+
+        def error(self, message: str) -> "TemplateError":
+            """
+            Create a template error for the context.
+            """
+
+            return TemplateError(self, message)
+
+        def scope_chainmap(self, globals_: dict[str, Any] | None = None) -> ChainMap:
+            """
+            Create a ChainMap of the scope.
+            """
+
+            return ChainMap(self.scope or {}, self.parent.scope_chainmap(globals_) if self.parent else (globals_ or {}))
+
+    def __init__(self, globals_: dict[str, Any] | None = None):
+        self.globals = globals_ or {}
 
     def evaluate(self, value: Value | Context[Value]) -> Value:
         """
@@ -66,32 +88,33 @@ class TemplateEngine:
 
             if key.startswith("if(") and key.endswith(")"):
                 if not isinstance(value, dict):
-                    raise ValueError(f"The value of an if block must be a dictionary. [@ {subctx.trace_location()}]")
+                    raise subctx.error("The value of an if block must be a dictionary.")
                 if self.evaluate_expression(self.Context(ctx, key, key[3:-1])):
                     result.update(self.evaluate_dict(self.Context(ctx, key, value)))
+
             elif key.startswith("for(") and key.endswith(")"):
                 if not isinstance(value, dict):
-                    raise ValueError(f"The value of a for block must be a dictionary. [@ {subctx.trace_location()}]")
-                # TODO: More rock-solid parsing of the for block
-                expr = key[4:-1]
+                    raise subctx.error("The value of a for block must be a dictionary.")
+
+                expr = key[4:-1]  # TODO: Better parsing of the for block syntax
                 if " in " not in expr:
-                    raise ValueError(f"Invalid for block expression: {expr} [@ {subctx.trace_location()}]")
+                    raise subctx.error(f"Invalid for block expression (missing 'in'): {expr}")
+
                 var, iterable = expr.split(" in ")
                 if not var.isidentifier():
-                    raise ValueError(f"Invalid for block variable: {var} [@ {subctx.trace_location()}]")
+                    raise subctx.error(f"Invalid for block variable (not an identifier): {var}")
+
                 it = self.evaluate_expression(self.Context(ctx, key, iterable))
                 if not isinstance(it, Iterable):
-                    raise ValueError(
-                        f"The iterable of a for block must be iterable, got {type(it).__name__}. [@ {subctx.trace_location()}]"
-                    )
+                    raise subctx.error(f"The iterable of a for block must be iterable, got {type(it).__name__}.")
+
                 for idx, item in enumerate(it):
                     result.update(self.evaluate_dict(self.Context(subctx, str(idx), value, {var: item})))
+
             else:
                 key_value = self.evaluate_string(self.Context(ctx, key, key))
                 if not isinstance(key_value, str):
-                    raise ValueError(
-                        f"Expected a string key, got {type(key_value).__name__} [@ {subctx.trace_location()}]"
-                    )
+                    raise subctx.error(f"Expected a string key, got {type(key_value).__name__}")
                 result[key_value] = self.evaluate(self.Context(ctx, key, value))
 
         return result
@@ -125,6 +148,20 @@ class TemplateEngine:
         """
 
         try:
-            return eval(ctx.data, dict(ctx.parent.scope))  # TODO: Evaluate in ChainDict of scope.
+            # TODO: Don't manifest full ChainMap, this is a huge performance hit.
+            return eval(ctx.data, dict(ctx.scope_chainmap(self.globals)))
         except Exception as e:
-            raise ValueError(f"Failed to evaluate the expression: {e} [@ {ctx.trace_location()}]") from e
+            raise ctx.error(f"Failed to evaluate the expression: {e}") from e
+
+
+@dataclass
+class TemplateError(Exception):
+    """
+    Raised for errors during template evaluation.
+    """
+
+    ctx: TemplateEngine.Context
+    message: str
+
+    def __str__(self) -> str:
+        return f"at {self.ctx.trace_location()}: {self.message}"

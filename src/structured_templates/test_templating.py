@@ -37,3 +37,16 @@ def test_dict_for_block() -> None:
 def test_basic_expression() -> None:
     engine = TemplateEngine()
     assert engine.evaluate({"key": "${{ 1 + 1 }}"}) == {"key": 2}
+
+
+def test_multiple_scopes() -> None:
+    engine = TemplateEngine({"x": 2})
+
+    template = {
+        "for(i in range(2))": {
+            "a${{i}}": "${{i * x}}",
+        }
+    }
+
+    result = engine.evaluate(template)
+    assert result == {"a0": 0, "a1": 2}
