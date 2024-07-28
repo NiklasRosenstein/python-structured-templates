@@ -16,4 +16,4 @@ class TemplateError(Exception):
     message: str
 
     def __str__(self) -> str:
-        return f"at {self.ctx.trace_location()}: {self.message}"
+        return f"at {self.ctx.format_location()}: {self.message}"

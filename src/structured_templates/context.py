@@ -29,20 +29,6 @@ class Context(Generic[T_Value]):
     def __post_init__(self) -> None:
         assert self.parent is None or self.key is not None, "The key must be provided if the parent is provided."
 
-    def trace_location(self) -> str:
-        """
-        Trace the location of the context.
-        """
-
-        if self.parent is None:
-            return "$"
-        else:
-            assert self.key is not None
-            if isinstance(self.key, int) or (isinstance(self.key, str) and self.key.isidentifier()):
-                return f"{self.parent.trace_location()}.{self.key}"
-            else:
-                return f"{self.parent.trace_location()}.'{self.key}'"
-
     def error(self, message: str) -> "TemplateError":
         """
         Create a template error for the context.
@@ -50,9 +36,34 @@ class Context(Generic[T_Value]):
 
         return TemplateError(self, message)
 
-    def scope_chainmap(self, globals_: dict[str, Any] | None = None) -> ChainMap:
+    def format_location(self) -> str:
+        """
+        Format the context location for human readability.
+        """
+
+        if self.parent is None:
+            return "$"
+        else:
+            assert self.key is not None
+            if isinstance(self.key, int) or (isinstance(self.key, str) and self.key.isidentifier()):
+                return f"{self.parent.format_location()}.{self.key}"
+            else:
+                return f"{self.parent.format_location()}.'{self.key}'"
+
+    def full_scope(self, globals_: dict[str, Any] | None = None) -> ChainMap:
         """
         Create a ChainMap of the scope.
         """
 
-        return ChainMap(self.scope or {}, self.parent.scope_chainmap(globals_) if self.parent else (globals_ or {}))
+        maps = []
+
+        if globals_ is not None:
+            maps.append(globals_)
+
+        curr: Context | None = self
+        while curr:
+            if curr.scope:
+                maps.append(curr.scope)
+            curr = curr.parent
+
+        return ChainMap(*maps)

@@ -92,7 +92,7 @@ class TemplateEngine:
         def _repl(m: re.Match[str]) -> str:
             result = self.evaluate_expression(Context(ctx.parent, ctx.key, m.group(1)))
             if not isinstance(result, int | float | str | bool | None):
-                raise ValueError(f"Expected a plain value, got {type(result).__name__} [@ {ctx.trace_location()}]")
+                raise ctx.error(f"Expected a plain value, got {type(result).__name__}")
             return str(result) if result is not None else ""
 
         return re.sub(r"\$\{\{(.+?)\}\}", _repl, ctx.data)
@@ -104,6 +104,6 @@ class TemplateEngine:
 
         try:
             # TODO: Don't manifest full ChainMap, this is a huge performance hit.
-            return eval(ctx.data, dict(ctx.scope_chainmap(self.globals)))
+            return eval(ctx.data, dict(ctx.full_scope(self.globals)))
         except Exception as e:
             raise ctx.error(f"Failed to evaluate the expression: {e}") from e
