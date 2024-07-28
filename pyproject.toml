@@ -1,6 +1,6 @@
 [project]
 name = "structured-templates"
-version = "0.0.1"
+version = "0.0.2"
 description = "Templating engine for structured data (no free-form text generation)."
 authors = [{name = "Niklas Rosenstein", email = "rosensteinniklas@gmail.com"}]
 dependencies = []
