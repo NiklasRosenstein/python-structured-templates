@@ -50,3 +50,41 @@ def test_multiple_scopes() -> None:
 
     result = engine.evaluate(template)
     assert result == {"a0": 0, "a1": 2}
+
+
+def test_nonrecursive() -> None:
+    engine = TemplateEngine({"x": 2})
+
+    template = {
+        "if(True)": {
+            "for(i in range(2))": {
+                "a${{i}}": "${{i * x}}",
+            }
+        },
+        "if(False)": {
+            "a": 42,
+        },
+    }
+
+    result = engine.evaluate(template, recursive=False)
+    assert result == {
+        "for(i in range(2))": {
+            "a${{i}}": "${{i * x}}",
+        }
+    }
+
+    result = engine.evaluate(result, recursive=False)
+    assert result == {
+        "with(i=0)": {
+            "a${{i}}": "${{i * x}}",
+        },
+        "with(i=1)": {
+            "a${{i}}": "${{i * x}}",
+        },
+    }
+
+    result = engine.evaluate(result, recursive=False)
+    assert result == {
+        "a0": 0,
+        "a1": 2,
+    }

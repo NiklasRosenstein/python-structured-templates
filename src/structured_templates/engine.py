@@ -14,7 +14,7 @@ class TemplateEngine:
     def __init__(self, globals_: dict[str, Any] | None = None):
         self.globals = globals_ or {}
 
-    def evaluate(self, value: Value | Context[Value]) -> Value:
+    def evaluate(self, value: Value | Context[Value], recursive: bool = True) -> Value:
         """
         Evaluate the given value.
         """
@@ -24,15 +24,15 @@ class TemplateEngine:
 
         match value.data:
             case dict():
-                return self.evaluate_dict(cast(Context[dict[str, Value]], value))
+                return self.evaluate_dict(cast(Context[dict[str, Value]], value), recursive)
             case list():
-                return self.evaluate_list(cast(Context[list[Value]], value))
+                return self.evaluate_list(cast(Context[list[Value]], value), recursive)
             case str():
                 return self.evaluate_string(cast(Context[str], value))
             case _:
                 return value.data
 
-    def evaluate_dict(self, ctx: Context[dict[str, Value]]) -> dict[str, Value]:
+    def evaluate_dict(self, ctx: Context[dict[str, Value]], recursive: bool) -> dict[str, Value]:
         """
         Evaluate the given dictionary.
         """
@@ -45,7 +45,9 @@ class TemplateEngine:
                 if not isinstance(value, dict):
                     raise subctx.error("The value of an if block must be a dictionary.")
                 if self.evaluate_expression(Context(ctx, key, key[3:-1])):
-                    result.update(self.evaluate_dict(Context(ctx, key, value)))
+                    if recursive:
+                        value = self.evaluate_dict(Context(ctx, key, value), recursive)
+                    result.update(value)
 
             elif key.startswith("for(") and key.endswith(")"):
                 if not isinstance(value, dict):
@@ -64,22 +66,43 @@ class TemplateEngine:
                     raise subctx.error(f"The iterable of a for block must be iterable, got {type(it).__name__}.")
 
                 for idx, item in enumerate(it):
-                    result.update(self.evaluate_dict(Context(subctx, str(idx), value, {var: item})))
+                    if not recursive:
+                        result[f"with({var}={item!r})"] = value
+                    else:
+                        result.update(self.evaluate_dict(Context(subctx, str(idx), value, {var: item}), recursive))
+
+            elif key.startswith("with(") and key.endswith(")"):
+                if not isinstance(value, dict):
+                    raise subctx.error("The value of a with block must be a dictionary.")
+
+                # TODO: Support multiple assignments
+                expr = key[5:-1]
+                if "=" not in expr:
+                    raise subctx.error(f"Invalid with block expression (missing '='): {expr}")
+
+                var, val = expr.split("=")
+                if not var.isidentifier():
+                    raise subctx.error(f"Invalid with block variable (not an identifier): {var}")
+
+                val = self.evaluate_expression(Context(ctx, key, val))
+                result.update(self.evaluate_dict(Context(subctx, var, value, {var: val}), recursive))
 
             else:
                 key_value = self.evaluate_string(Context(ctx, key, key))
                 if not isinstance(key_value, str):
                     raise subctx.error(f"Expected a string key, got {type(key_value).__name__}")
-                result[key_value] = self.evaluate(Context(ctx, key, value))
+                if recursive or isinstance(value, str):
+                    value = self.evaluate(Context(ctx, key, value), recursive)
+                result[key_value] = value
 
         return result
 
-    def evaluate_list(self, ctx: Context[list[Value]]) -> list[Value]:
+    def evaluate_list(self, ctx: Context[list[Value]], recursive: bool) -> list[Value]:
         """
         Evaluate the given list.
         """
 
-        return [self.evaluate(Context(ctx, None, item)) for item in ctx.data]
+        return [self.evaluate(Context(ctx, None, item), recursive) for item in ctx.data]
 
     def evaluate_string(self, ctx: Context[str]) -> Value:
         """
@@ -97,7 +120,7 @@ class TemplateEngine:
 
         return re.sub(r"\$\{\{(.+?)\}\}", _repl, ctx.data)
 
-    def evaluate_expression(self, ctx: Context[str]) -> bool:
+    def evaluate_expression(self, ctx: Context[str]) -> Any:
         """
         Evaluate the given expression.
         """
