@@ -88,3 +88,15 @@ def test_nonrecursive() -> None:
         "a0": 0,
         "a1": 2,
     }
+
+
+def test_list() -> None:
+    engine = TemplateEngine()
+
+    template = [
+        "${{ 1 + 1 }}",
+        "${{ 2 + 2 }}",
+    ]
+
+    result = engine.evaluate(template)
+    assert result == [2, 4]

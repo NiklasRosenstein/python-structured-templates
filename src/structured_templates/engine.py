@@ -102,7 +102,7 @@ class TemplateEngine:
         Evaluate the given list.
         """
 
-        return [self.evaluate(Context(ctx, None, item), recursive) for item in ctx.data]
+        return [self.evaluate(Context(ctx, idx, item), recursive) for idx, item in enumerate(ctx.data)]
 
     def evaluate_string(self, ctx: Context[str]) -> Value:
         """
