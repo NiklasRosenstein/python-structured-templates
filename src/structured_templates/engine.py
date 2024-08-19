@@ -91,6 +91,16 @@ class TemplateEngine:
                 val = self.evaluate_expression(Context(ctx, key, val))
                 result.update(self.evaluate_dict(Context(subctx, var, value, {var: val}), recursive))
 
+            elif key == "merge()":
+                if not isinstance(value, list):
+                    value = [value]
+
+                for item in value:
+                    item = self.evaluate(Context(ctx, key, item), recursive)
+                    if not isinstance(item, dict):
+                        raise subctx.error(f"Expected a dictionary, got {type(item).__name__}")
+                    result.update(item)
+
             else:
                 key_value = self.evaluate_string(Context(ctx, key, key))
                 if not isinstance(key_value, str):

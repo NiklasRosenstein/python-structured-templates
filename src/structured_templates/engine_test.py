@@ -111,3 +111,20 @@ def test_deferred_dict() -> None:
     }
     result = engine.evaluate(template)
     assert result == {"a": 42, "b": 0}
+
+
+def test_dict_merge() -> None:
+    engine = TemplateEngine(globals_={"mydict": {"a": 42}})
+    template = {
+        "merge()": "${{ mydict }}",
+        "b": 0,
+    }
+    result = engine.evaluate(template)
+    assert result == {"a": 42, "b": 0}
+
+    template = {
+        "b": 0,
+        "merge()": ["${{ mydict }}", {"b": 3}],
+    }
+    result = engine.evaluate(template)
+    assert result == {"a": 42, "b": 3}
