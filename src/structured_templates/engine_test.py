@@ -100,3 +100,14 @@ def test_list() -> None:
 
     result = engine.evaluate(template)
     assert result == [2, 4]
+
+
+def test_deferred_dict() -> None:
+    engine = TemplateEngine(globals_={"mydict": {"a": 42}})
+    template = {
+        "if(True)": "${{ mydict }}",
+        "if(False)": "${{ idontexist }}",
+        "b": 0,
+    }
+    result = engine.evaluate(template)
+    assert result == {"a": 42, "b": 0}

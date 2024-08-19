@@ -42,9 +42,13 @@ class TemplateEngine:
             subctx = Context(ctx, key, value)
 
             if key.startswith("if(") and key.endswith(")"):
-                if not isinstance(value, dict):
-                    raise subctx.error("The value of an if block must be a dictionary.")
                 if self.evaluate_expression(Context(ctx, key, key[3:-1])):
+                    # We require a dict, but if it's a string we want to evaluate it first.
+                    if isinstance(value, str):
+                        value = self.evaluate_string(Context(ctx, key, value))
+                    if not isinstance(value, dict):
+                        raise subctx.error("The value of an if block must be a dictionary.")
+
                     if recursive:
                         value = self.evaluate_dict(Context(ctx, key, value), recursive)
                     result.update(value)
