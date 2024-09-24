@@ -1,3 +1,4 @@
+from typing import Any
 from structured_templates import TemplateEngine
 
 
@@ -132,7 +133,7 @@ def test_dict_merge() -> None:
 
 def test_concat() -> None:
     engine = TemplateEngine()
-    template = {
+    template: dict[str, Any] = {
         "concat()": [
             ["a", "b"],
             None,
@@ -141,3 +142,23 @@ def test_concat() -> None:
     }
     result = engine.evaluate(template)
     assert result == ["a", "b", "c", "d"]
+
+    template = {
+        "securityGroupSelectorTerms": {
+            "concat()": [
+                [
+                    {"id": "a"},
+                    {"id": "b"},
+                ],
+                [{"id": "c"}],
+            ]
+        }
+    }
+    result = engine.evaluate(template)
+    assert result == {
+        "securityGroupSelectorTerms": [
+            {"id": "a"},
+            {"id": "b"},
+            {"id": "c"},
+        ]
+    }
