@@ -128,3 +128,16 @@ def test_dict_merge() -> None:
     }
     result = engine.evaluate(template)
     assert result == {"a": 42, "b": 3}
+
+
+def test_concat() -> None:
+    engine = TemplateEngine()
+    template = {
+        "concat()": [
+            ["a", "b"],
+            None,
+            ["c", "d"],
+        ]
+    }
+    result = engine.evaluate(template)
+    assert result == ["a", "b", "c", "d"]

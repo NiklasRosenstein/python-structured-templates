@@ -32,7 +32,7 @@ class TemplateEngine:
             case _:
                 return value.data
 
-    def evaluate_dict(self, ctx: Context[dict[str, Value]], recursive: bool) -> dict[str, Value]:
+    def evaluate_dict(self, ctx: Context[dict[str, Value]], recursive: bool) -> dict[str, Value] | list[Value]:
         """
         Evaluate the given dictionary.
         """
@@ -51,6 +51,9 @@ class TemplateEngine:
 
                     if recursive:
                         value = self.evaluate_dict(Context(ctx, key, value), recursive)
+
+                    if not isinstance(value, dict):
+                        raise subctx.error(f"if() must evaluate to a mapping, got {type(value).__name__}")
                     result.update(value)
 
             elif key.startswith("for(") and key.endswith(")"):
@@ -73,7 +76,10 @@ class TemplateEngine:
                     if not recursive:
                         result[f"with({var}={item!r})"] = value
                     else:
-                        result.update(self.evaluate_dict(Context(subctx, str(idx), value, {var: item}), recursive))
+                        new_value = self.evaluate_dict(Context(subctx, str(idx), value, {var: item}), recursive)
+                        if not isinstance(new_value, dict):
+                            raise subctx.error(f"for() must evaluate to a mapping, got {type(new_value).__name__}")
+                        result.update(new_value)
 
             elif key.startswith("with(") and key.endswith(")"):
                 if not isinstance(value, dict):
@@ -89,7 +95,10 @@ class TemplateEngine:
                     raise subctx.error(f"Invalid with block variable (not an identifier): {var}")
 
                 val = self.evaluate_expression(Context(ctx, key, val))
-                result.update(self.evaluate_dict(Context(subctx, var, value, {var: val}), recursive))
+                new_value = self.evaluate_dict(Context(subctx, var, value, {var: val}), recursive)
+                if not isinstance(new_value, dict):
+                    raise subctx.error(f"with() must evaluate to a mapping, got {type(new_value).__name__}")
+                result.update(new_value)
 
             elif key == "merge()":
                 if not isinstance(value, list):
@@ -100,6 +109,22 @@ class TemplateEngine:
                     if not isinstance(item, dict):
                         raise subctx.error(f"Expected a dictionary, got {type(item).__name__}")
                     result.update(item)
+
+            elif key == "concat()":
+                if len(ctx.data) != 1:
+                    raise subctx.error(f"concat() can only be used in a mapping with one key, got {ctx.data.keys()}")
+                if not isinstance(value, list):
+                    raise subctx.error(f"concat() value must be a list, got {type(value).__name__}")
+
+                new_list: list[Any] = []
+                for idx, item in enumerate(value):
+                    if item is None:
+                        continue
+                    if not isinstance(item, list):
+                        raise subctx.error(f"item {idx} to concat() must be a list, got {type(value).__name__}")
+                    new_list.extend(item)
+
+                return new_list
 
             else:
                 key_value = self.evaluate_string(Context(ctx, key, key))
