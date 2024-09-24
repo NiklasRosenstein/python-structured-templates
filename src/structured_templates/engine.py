@@ -120,6 +120,7 @@ class TemplateEngine:
                 for idx, item in enumerate(value):
                     if item is None:
                         continue
+                    item = self.evaluate(Context(ctx, idx, item), recursive)
                     if not isinstance(item, list):
                         raise subctx.error(f"item {idx} to concat() must be a list, got {type(value).__name__}")
                     new_list.extend(item)
